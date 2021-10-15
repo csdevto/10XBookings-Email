@@ -1,30 +1,5 @@
 """
-BEFORE RUNNING THE CODE
 
-pip3 install bs4 caldav
-
-1. MAKE SURE YOU CREATE A FOLDER IN YOUR EMAIL 
-   WHERE ALL THE BOOKING CONFIRMATIONS FROM Info@TenXToronto.com
-   ARE MOVED FOR PROCESSING
-2. MAKE SURE TO CREATE A CALENDAR OR ENTER BELOW AN ALREADY EXCISTING ONE
-3. THERE ARE TWO STEPS FOR CONFIGURATION
-
-    LOOK FOR #CONFIG MAIL, THE SERVER WILL BE THE IMAP OF GOOGLE
-    EMAIL WILL BE YOUR EMAIL ACCOUNT
-    AND PASSWORD, YOU NEED TO GO TO SECURITY AND CREATE AN APP PASSWORD,
-    THIS WILL PREVENT OUTLOOK FROM USING TWO FACTOR AUTHENTICATION
-
-    FOR THE CALENDAR SIDE:
-        USERNAME IS YOUR GMAIL EMAIL
-        PASSWORD IS YOU APP APSSWORD GREATED BEFORE
-        CalSer you need to select between ICLOUD or Google
-        lastly under calendar name enter your calendar where 
-        you want to add the bookings.
-
-The code will only look to the 10 newest emails and append a list with the ID
-it will run every two minutes and it will check the mailbox for new bookings
-once it finds it it will check that the ID doesnt exist in the list and 
-it will use CALDAV to create the new calendar.
 """
 import email
 import imaplib
@@ -40,10 +15,10 @@ import caldav
 
 load_dotenv()
 #Config Mail
-SERVER='imappro.zoho.com' #imapserver address
+SERVER=os.environ.get('IMAPServer') #imapserver address
 MailEmail= os.environ.get('MailEmail') #your email address
 MailPassword=os.environ.get('MailPassword') #app specific passowrd (prevents two factor authenticator)
-EmailFolder = '"/10X/10X Bookings"' #folder hoding emails for bookings - create a rule to move booking confirmations
+EmailFolder = os.environ.get('EmailFolder')#folder hoding emails for bookings - create a rule to move booking confirmations
 
 #Initiate email Imap
 mail = imaplib.IMAP4_SSL(SERVER)
@@ -53,8 +28,9 @@ mail.login(MailEmail, MailPassword)
 CalEmail = os.environ.get('CalEmail')#if using same mail client use email and password from above
 CalPassword = os.environ.get('CalPassword') #same as above if same account
 CalDavURL=['https://caldav.icloud.com','https://www.google.com/calendar/dav/' + CalEmail + '/user']
-caldav_url = CalDavURL[0] #pick between 0 Icloud and 1 Google
-CalendarName = 'Test' #Calendar Name
+Cal = int(os.environ.get('CalendarService'))
+caldav_url = CalDavURL[Cal] #pick between 0 Icloud and 1 Google
+CalendarName = os.environ.get('CalendarName') #Calendar Name
 
 #Start Caldav
 client = caldav.DAVClient(url=caldav_url, username=CalEmail, password=CalPassword)
@@ -92,7 +68,8 @@ def CreateCalendar(CalName,UID,DTSTART,DTEND,Summary):
     except caldav.error.NotFoundError:
         ## Let's create a calendar
         my_new_calendar = my_principal.make_calendar(name=CalName)
-    my_new_calendar.save_event(f"""BEGIN:VCALENDAR
+    try: 
+        my_new_calendar.save_event(f"""BEGIN:VCALENDAR
 VERSION:2.0
 BEGIN:VEVENT
 UID: {UID}
@@ -102,17 +79,24 @@ SUMMARY:{Summary}
 END:VEVENT
 END:VCALENDAR
 """)
+    except:
+        pass
 def MailBoxes():
     for i in mail.list()[1]:
         l = i.decode().split(' "/" ')
         print(l[1])
 
 def writelist(List,FileName):
-    with open('/DB/' + FileName + '.txt','w') as filehandle:
-        json.dump(List, filehandle)
+    try:
+        with open('DB/' + FileName + '.txt','w') as filehandle:
+            json.dump(List, filehandle)
+    except FileNotFoundError:
+        os.mkdir('DB')
+        with open('DB/' + FileName + '.txt','w') as filehandle:
+            json.dump(List, filehandle)
 def readlist(FileName):
     try:
-        with open('/DB/' + FileName + '.txt', 'r') as filehandle:
+        with open('DB/' + FileName + '.txt', 'r') as filehandle:
             return json.load(filehandle)
     except FileNotFoundError:
         a = []
@@ -152,7 +136,11 @@ def BookingConfirmation():
                     EndTime = BookingTime + timedelta(hours=1)
                     BookingTime = BookingTime.strftime('%Y%m%dT%H%M%S')
                     EndTime = EndTime.strftime('%Y%m%dT%H%M%S')
-                    BLocation = "10X:" + (soup.split("on",1)[1]).replace("=\r\n", "")
+                    try:
+                        location = (soup.split("on",1)[1]).replace("=\r\n", "")
+                    except:
+                        location = "Booking Confirmation"
+                    BLocation = "10X:" + location
                     CreateCalendar(CalendarName,id,BookingTime,EndTime,BLocation)
     print(OldID)
     writelist(OldID,'Confirmation')
@@ -164,7 +152,7 @@ def DeleteBooking():
     mail_ids = []
     for block in data:
         mail_ids += block.split()
-    for i in mail_ids[-1:]:
+    for i in mail_ids[-10:]:
         id = (f"{i}")
         if id not in OldID:
             OldID.append(id)
@@ -207,7 +195,7 @@ def DeleteBooking():
                     except AttributeError:
                         print(f"{Start} does not exist")
     print(OldID)
-    #writelist(OldID,'Cancellation')
+    writelist(OldID,'Cancellation')
     
 while True:
     DeleteBooking()
