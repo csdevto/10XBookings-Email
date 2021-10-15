@@ -19,6 +19,7 @@ pip3 install bs4 caldav python-dotenv
         CalendarName=''   #Please add your CalendarName where you want to add the booking confirmation
         CalendarService=  #as of right now type 0 for Icloud and 1 for google
         
+TO RUN THE CODE EXECUTE PYTHON3 Email-Calendar.py
 
 The code will only look to the 10 newest emails and append a list with the ID
 it will run every two minutes and it will check the mailbox for new bookings
