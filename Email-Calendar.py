@@ -56,8 +56,9 @@ def GetCalendarList():
             print("    Name: %-20s  URL: %s" % (c.name, c.url))
         else:
             print("your principal has no calendars")
-def CreateCalendar(CalName,UID,DTSTART,DTEND,Summary):
+def CreateCalendar(CalName,DTSTART,DTEND,Summary):
     ## Let's try to find or create a calendar ... ##f FOR GOOGLE NEED TO CHECK WHY IT CANT CREATE CALENDAR
+
     my_new_calendar =''
     try:
         ## This will raise a NotFoundError if calendar does not exist
@@ -68,19 +69,18 @@ def CreateCalendar(CalName,UID,DTSTART,DTEND,Summary):
     except caldav.error.NotFoundError:
         ## Let's create a calendar
         my_new_calendar = my_principal.make_calendar(name=CalName)
-    try: 
-        my_new_calendar.save_event(f"""BEGIN:VCALENDAR
+
+    my_new_calendar.save_event(f"""BEGIN:VCALENDAR
 VERSION:2.0
 BEGIN:VEVENT
-UID: {UID}
+UID: {DTSTART + DTEND + Summary}
 DTSTART:{DTSTART}
 DTEND:{DTEND}
 SUMMARY:{Summary}
 END:VEVENT
 END:VCALENDAR
 """)
-    except:
-        pass
+
 def MailBoxes():
     for i in mail.list()[1]:
         l = i.decode().split(' "/" ')
@@ -141,7 +141,7 @@ def BookingConfirmation():
                     except:
                         location = "Booking Confirmation"
                     BLocation = "10X:" + location
-                    CreateCalendar(CalendarName,id,BookingTime,EndTime,BLocation)
+                    CreateCalendar(CalendarName,BookingTime,EndTime,BLocation)
     print(OldID)
     writelist(OldID,'Confirmation')
 #print(GetCalendarList())
