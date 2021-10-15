@@ -1,7 +1,7 @@
 # 10XBookings-Email
 BEFORE RUNNING THE CODE
 
-pip3 install bs4 caldav dotenv
+pip3 install bs4 caldav python-dotenv
 
 1. MAKE SURE YOU CREATE A FOLDER IN YOUR EMAIL 
    WHERE ALL THE BOOKING CONFIRMATIONS FROM Info@TenXToronto.com
