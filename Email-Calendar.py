@@ -108,11 +108,11 @@ def MailBoxes():
         print(l[1])
 
 def writelist(List,FileName):
-    with open(FileName + '.txt','w') as filehandle:
+    with open('/DB/' + FileName + '.txt','w') as filehandle:
         json.dump(List, filehandle)
 def readlist(FileName):
     try:
-        with open(FileName + '.txt', 'r') as filehandle:
+        with open('/DB/' + FileName + '.txt', 'r') as filehandle:
             return json.load(filehandle)
     except FileNotFoundError:
         a = []
