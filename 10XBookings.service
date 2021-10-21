@@ -1,0 +1,14 @@
+[Unit]
+Description= 10XBookings Service
+After=network.target
+StartLimitIntervalSec=1
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=2
+User=pi
+ExecStart=/usr/bin/python3 /home/git/10XBookings-Email/Email-Calendar.py
+
+[Install]
+WantedBy=multi-user.target
