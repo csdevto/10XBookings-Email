@@ -105,7 +105,8 @@ def readlist(FileName):
 def BookingConfirmation():
     mail.select(EmailFolder)
     OldID = readlist('Confirmation')
-    status, data = mail.search(None, '(FROM "Info@TenXToronto.com" SUBJECT "10XTO: Schedule Confirmation")')
+    status, data = mail.search(None, 'FROM "no-reply@clubautomation.com"', 'SUBJECT "New "', 'SUBJECT " Created"')
+
     mail_ids = []
     for block in data:
         mail_ids += block.split()
@@ -128,20 +129,66 @@ def BookingConfirmation():
                     else:
                         mail_content = message.get_payload()
                     soup = BeautifulSoup(''.join(mail_content),"lxml")
-                    soup = soup.findAll('strong')[0].next
                     
-                    BDate = DateRegex.search(soup).group()
-                    BTime = TimeRegex.search(soup).group()
-                    BookingTime = datetime.strptime(BDate + " " + BTime,"%B %d, %Y %I:%M %p")
+                    # Parse the HTML with BeautifulSoup
+                    soup = BeautifulSoup(mail_content, "html.parser")
+                    soup = soup.get_text()
+                    print(soup)
+
+                    # Extract date and time
+                    date_time_match = re.search(r"(\w+), (\w+ \d+) at (\d+:\d+[ap]m)", soup)
+                    if date_time_match:
+                        day_of_week = date_time_match.group(1)
+                        date_str = date_time_match.group(2)
+                        time_str = date_time_match.group(3)
+                        
+                        # Combine date and time into a single string
+                        date_time_str = f"{date_str} {time_str}"
+                        
+                        # Parse the date and time string into a datetime object
+                        BookingTime = datetime.strptime(date_time_str, "%B %d %I:%M%p")
+                        
+                        # Adjust the year
+                        current_year = datetime.now().year
+                        extracted_month = BookingTime.month
+                        if extracted_month == 1 and datetime.now().month == 12:
+                            current_year += 1
+
+                        BookingTime = BookingTime.replace(year=current_year)
+                        print(BookingTime)
+                        print("Date:", BookingTime.date())
+                        print("Time:", BookingTime.time())
                     EndTime = BookingTime + timedelta(hours=1)
                     BookingTime = BookingTime.strftime('%Y%m%dT%H%M%S')
                     EndTime = EndTime.strftime('%Y%m%dT%H%M%S')
-                    try:
-                        location = (soup.split("on",1)[1]).replace("=\r\n", "")
-                    except:
+
+                    # Determine Instructors Name
+                    instructor_name = None
+                    if "New Private Lesson Created" in mail_subject:
+                        instructor_name_match = re.search(r"with\s+([\w\s]+)", soup)
+                        if instructor_name_match:
+                            instructor_name = instructor_name_match.group(1)
+                            print(f"Instructor: {instructor_name}")
+
+                    # Determine location based on the subject
+                    if "New Court Time Created" in mail_subject:
+                        court_number_match = re.search(r"ourt (\d+)", soup)
+                        if court_number_match:
+                            location = "Court: " + str(court_number_match.group(1))
+                            print(location)
+                        else:
+                            location = "Booking Confirmation"
+                    elif "New Private Lesson Created" in mail_subject:
+                        if instructor_name:
+                            location = f"Private Lesson with {instructor_name}"
+                        else:
+                            location = "Private Lesson"
+                    else:
                         location = "Booking Confirmation"
+
                     BLocation = "10X:" + location
                     CreateCalendar(CalendarName,BookingTime,EndTime,BLocation)
+
     print(OldID)
     writelist(OldID,'Confirmation')
 #print(GetCalendarList())
@@ -198,7 +245,8 @@ def DeleteBooking():
     writelist(OldID,'Cancellation')
     
 while True:
-    DeleteBooking()
+    #DeleteBooking()
     BookingConfirmation()
-    time.sleep(240)
     print('loop')
+    time.sleep(240)
+    
